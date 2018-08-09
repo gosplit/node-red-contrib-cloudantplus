@@ -22,7 +22,7 @@ operation is supported.
 To **insert** a new document into the database you have the option to store
 the entire `msg` object or just the `msg.payload`. If the input value is not
 in JSON format, it will be transformed before being stored. If `msg` is an array, 
-all elements will be processed by **bulk opertaion** operation.
+all elements will be processed by **bulk opertaion**.
 
 For **update** and **delete**, you must pass the `_id` and the `_rev`as part
 of the input `msg` object. **bulk opertaion** is also supported when putting documents as 
