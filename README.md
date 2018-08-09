@@ -43,7 +43,7 @@ as defined in the Query string section in the [Cloudant documentation](https://c
 
 Authors
 -------
-* Austin Chang -[austinhc@tw.ibm.com](mailto:austinhc@tw.ibm.com)
+* Austin Chang - [austinhc@tw.ibm.com](mailto:austinhc@tw.ibm.com)
 
 Based on the node written by:
 * Adam Hammond - [adam_hammond@uk.ibm.com](mailto:adam_hammond@uk.ibm.com)
