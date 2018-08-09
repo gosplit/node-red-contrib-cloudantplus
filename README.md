@@ -16,14 +16,17 @@ npm install node-red-contrib-cloudantplus-selector
 Usage
 -----
 Allows basic access to a [Cloudant](http://cloudant.com) database to
-`insert`, `update`, `delete` and `search` for documents.
+`insert`, `update`, `delete` and `search` for documents. Also `bulk` 
+operation is supported.
 
 To **insert** a new document into the database you have the option to store
 the entire `msg` object or just the `msg.payload`. If the input value is not
-in JSON format, it will be transformed before being stored.
+in JSON format, it will be transformed before being stored. If `msg` is an array, 
+all elements will be processed by **bulk opertaion** operation.
 
 For **update** and **delete**, you must pass the `_id` and the `_rev`as part
-of the input `msg` object.
+of the input `msg` object. **bulk opertaion** is also supported when putting documents as 
+an array in the input `msg` object.
 
 To **search** for a document you have three options:
 * get a document directly by its `_id`
