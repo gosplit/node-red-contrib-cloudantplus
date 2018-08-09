@@ -1,8 +1,8 @@
-node-red-contrib-cloudantplus
+node-red-contrib-cloudantplus-selector
 =========================
 A pair of [Node-RED](http://nodered.org) nodes to work with documents
 in a [Cloudant](http://cloudant.com) database that is integrated with
-[IBM Bluemix](http://bluemix.net).
+[IBM Cloud](http://bluemix.net).
 
 Install
 -------
@@ -10,7 +10,7 @@ Ideally, install from the package manager inside Node-RED.
 
 Alternatively, install from [npm](http://npmjs.org)
 ```
-npm install node-red-contrib-cloudantplus
+npm install node-red-contrib-cloudantplus-selector
 ```
 
 Usage
@@ -27,11 +27,14 @@ of the input `msg` object.
 
 To **search** for a document you have three options:
 * get a document directly by its `_id`
-* use an existing [search index](https://cloudant.com/for-developers/search/)
+* use [query](https://console.bluemix.net/docs/services/Cloudant/api/cloudant_query.html#query)
+* use an existing [search index](https://console.bluemix.net/docs/services/Cloudant/api/search.html#search)
 from the database
 * use an existing [view](https://console.bluemix.net/docs/services/Cloudant/api/using_views.html#using-views)
 
 When getting documents by id, the `payload` will be the desired `_id` value.
+
+For `query`, the `payload` will be the set to an object with a [declarative JSON query syntax](https://console.bluemix.net/docs/services/Cloudant/api/cloudant_query.html#finding-documents-using-an-index).
 
 For `search indexes`, the query should follow the format `indexName:value`.
 
@@ -40,8 +43,9 @@ as defined in the Query string section in the [Cloudant documentation](https://c
 
 Authors
 -------
-* Adam Hammond - [adam_hammond@uk.ibm.com](mailto:adam_hammond@uk.ibm.com)
+* Austin Chang -[austinhc@tw.ibm.com](mailto:austinhc@tw.ibm.com)
 
 Based on the node written by:
+* Adam Hammond - [adam_hammond@uk.ibm.com](mailto:adam_hammond@uk.ibm.com)
 * Luiz Gustavo Ferraz Aoqui - [laoqui@ca.ibm.com](mailto:laoqui@ca.ibm.com)
 * Túlio Pascoal

@@ -18,7 +18,7 @@ module.exports = function(RED) {
     var url         = require('url');
     var querystring = require('querystring');
     var cfEnv       = require("cfenv");
-    var Cloudant    = require("cloudant");
+    var Cloudant    = require('@cloudant/cloudant');
 
     var MAX_ATTEMPTS = 3;
 
@@ -67,7 +67,7 @@ module.exports = function(RED) {
         if ((credentials) && (credentials.hasOwnProperty("username"))) { this.username = credentials.username; }
         if ((credentials) && (credentials.hasOwnProperty("pass"))) { this.password = credentials.pass; }
     }
-    RED.nodes.registerType("cloudantplus", CloudantNode, {
+    RED.nodes.registerType("cloudantplus-selector", CloudantNode, {
         credentials: {
             pass: {type:"password"},
             username: {type:"text"}
@@ -240,7 +240,7 @@ module.exports = function(RED) {
           });
         }
     };
-    RED.nodes.registerType("cloudantplus out", CloudantOutNode);
+    RED.nodes.registerType("cloudantplus-selector out", CloudantOutNode);
 
     function CloudantInNode(n) {
         RED.nodes.createNode(this,n);
@@ -306,6 +306,11 @@ module.exports = function(RED) {
             options.limit = options.limit || 200;
 
             db.search(node.design, node.index, options, function(err, body) {
+                sendDocumentOnPayload(err, body, msg, node);
+            });
+          }
+          else if (node.search === "_query_") {
+            db.find(options, function(err, body) {
                 sendDocumentOnPayload(err, body, msg, node);
             });
           }
@@ -390,7 +395,7 @@ module.exports = function(RED) {
             node.send(msg);
         }
     }
-    RED.nodes.registerType("cloudantplus in", CloudantInNode);
+    RED.nodes.registerType("cloudantplus-selector in", CloudantInNode);
 
     // must return an object with, at least, values for account, username and
     // password for the Cloudant service at the top-level of the object
