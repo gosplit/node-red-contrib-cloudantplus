@@ -155,29 +155,60 @@ module.exports = function(RED) {
             var root = node.payonly ? "payload" : "msg";
             var doc  = parseMessage(msg, root);
 
-            insertDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
-              if (err) {
-                  console.trace();
-                  console.log(node.error.toString());
-                  node.error("Failed to insert document: " + err.description, msg);
-              };
-              node.status({fill:"green",shape:"dot",text:"connected"});
-            });
-          }
-          else if (node.operation === "delete") {
-            var doc = parseMessage(msg.payload || msg, "");
-
-            if ("_rev" in doc && "_id" in doc) {
-              var db = cloudant.use(node.database);
-              db.destroy(doc._id, doc._rev, function(err, body) {
+            if (doc.constructor === Array) {
+              bulkDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
                 if (err) {
-                  node.error("Failed to delete document: " + err.description, msg);
+                    console.trace();
+                    console.log(node.error.toString());
+                    node.error("Failed to insert document: " + err.description, msg);
                 };
                 node.status({fill:"green",shape:"dot",text:"connected"});
               });
             } else {
-              var err = new Error("_id and _rev are required to delete a document");
-              node.error(err.message, msg);
+              insertDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
+                if (err) {
+                  console.trace();
+                  console.log(node.error.toString());
+                  node.error("Failed to insert document: " + err.description, msg);
+                };
+                node.status({fill:"green",shape:"dot",text:"connected"});
+              });
+            }
+          }
+          else if (node.operation === "delete") {
+            var doc = parseMessage(msg.payload || msg, "");
+
+            if (doc.constructor === Array) {
+              doc.forEach((element, index, obj) => {
+                    if ("_rev" in element && "_id" in element) {
+                       element._deleted = true;
+                    }else{
+                      obj.splice(index, 1);
+                      var err = new Error("_id and _rev are required to delete a document");
+                      node.error(err.message, msg);
+                    }
+                   });
+                   bulkDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
+                if (err) {
+                    console.trace();
+                    console.log(node.error.toString());
+                    node.error("Failed to delete document: " + err.description, msg);
+                };
+                node.status({fill:"green",shape:"dot",text:"connected"});
+              });
+            } else {
+              if ("_rev" in doc && "_id" in doc) {
+                var db = cloudant.use(node.database);
+                db.destroy(doc._id, doc._rev, function(err, body) {
+                  if (err) {
+                    node.error("Failed to delete document: " + err.description, msg);
+                  };
+                  node.status({fill:"green",shape:"dot",text:"connected"});
+                });
+              } else {
+                var err = new Error("_id and _rev are required to delete a document");
+                node.error(err.message, msg);
+              }
             }
           };
 
@@ -234,6 +265,23 @@ module.exports = function(RED) {
               // status_code 404 means the database was not found
               return cloudant.db.create(db.config.db, function() {
                   insertDocument(cloudant, node, doc, attempts-1, callback);
+              });
+            }
+            callback(err, body);
+          });
+        }
+
+         // Bulk operation on documents +doc+ in a database +db+ that migh not exist
+        // beforehand. If the database doesn't exist, it will create one
+        // with the name specified in +db+. To prevent loops, it only tries
+        // +attempts+ number of times.
+        function bulkDocument(cloudant, node, doc, attempts, callback) {
+          var db = cloudant.use(node.database);
+          db.bulk( { docs: doc }, function(err, body) {
+            if (err && err.status_code === 404 && attempts > 0) {
+              // status_code 404 means the database was not found
+              return cloudant.db.create(db.config.db, function() {
+                bulkDocument(cloudant, node, { docs: doc }, attempts-1, callback);
               });
             }
             callback(err, body);
