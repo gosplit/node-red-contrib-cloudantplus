@@ -155,7 +155,7 @@ module.exports = function(RED) {
             var root = node.payonly ? "payload" : "msg";
             var doc  = parseMessage(msg, root);
 
-            if (doc.constructor === Array) {
+            if (Object.prototype.toString.call( doc ) === '[object Array]') {
               bulkDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
                 if (err) {
                     console.trace();
@@ -178,7 +178,7 @@ module.exports = function(RED) {
           else if (node.operation === "delete") {
             var doc = parseMessage(msg.payload || msg, "");
 
-            if (doc.constructor === Array) {
+            if (Object.prototype.toString.call( doc ) === '[object Array]') {
               doc.forEach((element, index, obj) => {
                     if ("_rev" in element && "_id" in element) {
                        element._deleted = true;
@@ -234,13 +234,27 @@ module.exports = function(RED) {
         // fix field values that start with _
         // https://wiki.apache.org/couchdb/HTTP_Document_API#Special_Fields
         function cleanMessage(msg) {
-          for (var key in msg) {
-            if (msg.hasOwnProperty(key) && !isFieldNameValid(key)) {
-              // remove _ from the start of the field name
-              var newKey = key.substring(1, msg.length);
-              msg[newKey] = msg[key];
-              delete msg[key];
-              node.warn("Property '" + key + "' renamed to '" + newKey + "'.");
+          if (Object.prototype.toString.call( msg ) === '[object Array]') {
+            for (var i in msg) {
+              for (var key in msg[i]) {
+                if (msg[i].hasOwnProperty(key) && !isFieldNameValid(key)) {
+                  // remove _ from the start of the field name
+                  var newKey = key.substring(1, msg[i].length);
+                  msg[i][newKey] = msg[i][key];
+                  delete msg[i][key];
+                  node.warn("Property '" + key + "' renamed to '" + newKey + "'.");
+                }
+              }
+            }
+          } else {
+            for (var key in msg) {
+              if (msg.hasOwnProperty(key) && !isFieldNameValid(key)) {
+                // remove _ from the start of the field name
+                var newKey = key.substring(1, msg.length);
+                msg[newKey] = msg[key];
+                delete msg[key];
+                node.warn("Property '" + key + "' renamed to '" + newKey + "'.");
+              }
             }
           }
           return msg;
