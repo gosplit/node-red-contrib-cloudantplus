@@ -92,7 +92,7 @@ module.exports = function(RED) {
             key:      node.cloudantConfig.username,
             password: node.cloudantConfig.password,
             url: node.cloudantConfig.url
-        };
+       };
 
 
         node.status({fill:"grey",shape:"ring",text:"disconnected"});
@@ -120,7 +120,7 @@ module.exports = function(RED) {
                       return;
                   }
 
-                  delete msg._msgid;
+                  //delete msg._msgid;
                   handleMessage(cloudant, node, msg);
               });
             }
@@ -151,32 +151,36 @@ module.exports = function(RED) {
 
         function handleMessage(cloudant, node, msg) {
           if (node.operation === "insert") {
-            var msg  = node.payonly ? msg.payload : msg;
+            var data  = Object.assign({}, node.payonly ? msg.payload : msg);
+            delete data._msgid;
             var root = node.payonly ? "payload" : "msg";
-            var doc  = parseMessage(msg, root);
+            var doc  = parseMessage(data, root);
 
             if (Object.prototype.toString.call( doc ) === '[object Array]') {
               bulkDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
                 if (err) {
                     console.trace();
                     console.log(node.error.toString());
-                    node.error("Failed to insert document: " + err.description, msg);
+                    node.error("Failed to insert document: " + err.description, data);
                 };
                 node.status({fill:"green",shape:"dot",text:"connected"});
+                sendDocumentOnPayload(err, body, msg, node);
               });
             } else {
               insertDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
                 if (err) {
                   console.trace();
                   console.log(node.error.toString());
-                  node.error("Failed to insert document: " + err.description, msg);
+                  node.error("Failed to insert document: " + err.description, data);
                 };
                 node.status({fill:"green",shape:"dot",text:"connected"});
+                sendDocumentOnPayload(err, body, msg, node);
               });
             }
           }
           else if (node.operation === "delete") {
             var doc = parseMessage(msg.payload || msg, "");
+            delete doc._msgid;
 
             if (Object.prototype.toString.call( doc ) === '[object Array]') {
               doc.forEach((element, index, obj) => {
@@ -185,34 +189,78 @@ module.exports = function(RED) {
                     }else{
                       obj.splice(index, 1);
                       var err = new Error("_id and _rev are required to delete a document");
-                      node.error(err.message, msg);
+                      node.error(err.message, data);
                     }
                    });
                    bulkDocument(cloudant, node, doc, MAX_ATTEMPTS, function(err, body) {
                 if (err) {
                     console.trace();
                     console.log(node.error.toString());
-                    node.error("Failed to delete document: " + err.description, msg);
+                    node.error("Failed to delete document: " + err.description, data);
                 };
                 node.status({fill:"green",shape:"dot",text:"connected"});
+                sendDocumentOnPayload(err, body, msg, node);
               });
             } else {
               if ("_rev" in doc && "_id" in doc) {
                 var db = cloudant.use(node.database);
                 db.destroy(doc._id, doc._rev, function(err, body) {
                   if (err) {
-                    node.error("Failed to delete document: " + err.description, msg);
+                    node.error("Failed to delete document: " + err.description, data);
                   };
                   node.status({fill:"green",shape:"dot",text:"connected"});
+                  sendDocumentOnPayload(err, body, msg, node);
                 });
               } else {
                 var err = new Error("_id and _rev are required to delete a document");
-                node.error(err.message, msg);
+                node.error(err.message, data);
               }
             }
           };
 
         }
+
+        function sendDocumentOnPayload(err, body, msg, node) {
+          if (!err) {
+              node.status({fill:"green",shape:"dot",text:"connected"});
+              msg.cloudant = body;
+
+              if ("rows" in body) {
+                  msg.payload = body.rows.
+                      map(function(el) {
+                          if (el.doc) {
+                            if (el.doc._id.indexOf("_design/") < 0) {
+                                return el.doc;
+                            }
+                          } else {
+                            return el;
+                          }
+
+                      }).
+                      filter(function(el) {
+                          return el !== null && el !== undefined;
+                      });
+              } else {
+                  msg.payload = body;
+              };
+          }
+          else {
+              msg.payload = null;
+
+              if (err.description === "missing") {
+                node.warn(
+                    "Document '" + node.inputId +
+                    "' not found in database '" + node.database + "'.",
+                    err
+                );
+                node.status({fill:"green",shape:"dot",text:"connected"});
+              } else {
+                  node.error(err.description, err);
+              }
+          }
+
+          node.send(msg);
+      }
 
         function parseMessage(msg, root) {
           if (typeof msg !== "object") {
@@ -363,6 +411,7 @@ module.exports = function(RED) {
             });
           }
           else if (node.search === "_idx_") {
+            consle.log(options);
             options.query = options.query || options.q || formatSearchQuery(msg.payload);
             options.include_docs = options.include_docs || true;
             options.limit = options.limit || 200;
