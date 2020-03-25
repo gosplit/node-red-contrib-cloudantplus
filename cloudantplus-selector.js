@@ -151,9 +151,16 @@ module.exports = function(RED) {
 
         function handleMessage(cloudant, node, msg) {
           if (node.operation === "insert") {
-            var data  = Object.assign({}, node.payonly ? msg.payload : msg);
-            delete data._msgid;
             var root = node.payonly ? "payload" : "msg";
+              // assign object type to match incoming content
+            if(Object.prototype.toString.call( msg[root] ) === '[object Array]'){
+                var data  = Object.assign([], msg[root]);
+            }
+            else {
+                var data  = Object.assign({}, msg[root]);
+            }
+            delete data._msgid;
+              
             var doc  = parseMessage(data, root);
 
             if (Object.prototype.toString.call( doc ) === '[object Array]') {
@@ -411,7 +418,7 @@ module.exports = function(RED) {
             });
           }
           else if (node.search === "_idx_") {
-            consle.log(options);
+            console.log(options);
             options.query = options.query || options.q || formatSearchQuery(msg.payload);
             options.include_docs = options.include_docs || true;
             options.limit = options.limit || 200;
